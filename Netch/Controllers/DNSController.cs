@@ -1,83 +1,33 @@
-﻿using Netch.Forms;
-using Netch.Utils;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.IO;
+using Netch.Interfaces;
+using static Netch.Interops.AioDNS;
 
 namespace Netch.Controllers
 {
-    public class DNSController
+    public class DNSController : IController
     {
-        /// <summary>
-        ///		进程实例
-        /// </summary>
-        public Process Instance;
+        public string Name { get; } = "DNS Service";
 
-        /// <summary>
-        /// 启动DNS服务
-        /// </summary>
-        /// <returns></returns>
-        public bool Start()
-        {
-            MainForm.Instance.StatusText($"{Utils.i18N.Translate("Starting dns Service")}");
-            try
-            {
-                if (!File.Exists("bin\\unbound.exe") && !File.Exists("bin\\unbound-service.conf") && !File.Exists("bin\\forward-zone.conf"))
-                {
-                    return false;
-                }
-
-                Instance = MainController.GetProcess();
-                Instance.StartInfo.FileName = "bin\\unbound.exe";
-
-                Instance.StartInfo.Arguments = "-c unbound-service.conf -v";
-
-                Instance.OutputDataReceived += OnOutputDataReceived;
-                Instance.ErrorDataReceived += OnOutputDataReceived;
-
-                Instance.Start();
-                Instance.BeginOutputReadLine();
-                Instance.BeginErrorReadLine();
-                Logging.Info("dns-unbound 启动完毕");
-                return true;
-            }
-            catch (Exception)
-            {
-                Utils.Logging.Info("dns-unbound 进程出错");
-                Stop();
-                return false;
-            }
-        }
-
-        /// <summary>
-        ///		停止
-        /// </summary>
         public void Stop()
         {
-            try
-            {
-                if (Instance != null && !Instance.HasExited)
-                {
-                    Instance.Kill();
-                    Instance.WaitForExit();
-                }
-            }
-            catch (Exception e)
-            {
-                Utils.Logging.Info(e.ToString());
-            }
+            Free();
         }
 
-        public void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        /// <summary>
+        ///     启动DNS服务
+        /// </summary>
+        /// <returns></returns>
+        public void Start()
         {
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                if (File.Exists("logging\\dns-unbound.log"))
-                {
-                    File.Delete("logging\\dns-unbound.log");
-                }
-                File.AppendAllText("logging\\dns-unbound.log", $"{e.Data}\r\n");
-            }
+            Dial(NameList.TYPE_REST, "");
+            Dial(NameList.TYPE_ADDR, $"{Global.Settings.LocalAddress}:{Global.Settings.AioDNS.ListenPort}");
+            Dial(NameList.TYPE_LIST, Path.GetFullPath(Global.Settings.AioDNS.RulePath));
+            Dial(NameList.TYPE_CDNS, $"{Global.Settings.AioDNS.ChinaDNS}");
+            Dial(NameList.TYPE_ODNS, $"{Global.Settings.AioDNS.OtherDNS}");
+
+            if (!Init())
+                throw new Exception("AioDNS start failed");
         }
     }
 }

@@ -1,135 +1,147 @@
-﻿using System.Collections.Generic;
-using System.Globalization;
+﻿using Netch.Utils;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Netch.Enums;
 
 namespace Netch.Models
 {
     public class Mode
     {
         /// <summary>
-        ///		备注
+        /// 
         /// </summary>
-        public string Remark;
+        /// <param name="fullName">Mode File FullPath</param>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="NotSupportedException"></exception>
+        public Mode(string? fullName)
+        {
+            FullName = fullName;
+            if (FullName == null || !File.Exists(FullName))
+                return;
+
+            (Remark, Type) = ReadHead(FullName);
+        }
+
+        public string? FullName { get; }
 
         /// <summary>
-        ///		无后缀文件名
+        ///     规则
         /// </summary>
-        public string FileName;
+        public List<string> Content => _content ??= ReadContent();
+
+        private List<string>? _content;
 
         /// <summary>
-        ///     类型
-        ///     0. 进程加速
-        ///     1. TUN/TAP 规则内 IP CIDR 加速
-        ///     2. TUN/TAP 全局，绕过规则内 IP CIDR
-        ///     3. HTTP 代理（自动设置到系统代理）
-        ///     4. Socks5 代理（不自动设置到系统代理）
-        ///     5. Socks5 + HTTP 代理（不自动设置到系统代理）
+        ///     备注
         /// </summary>
-        public int Type = 0;
+        public string Remark { get; set; } = "";
+
+        public ModeType Type { get; set; } = ModeType.Process;
 
         /// <summary>
-        ///    绕过中国（0. 不绕过 1. 绕过）
+        ///     文件相对路径(必须是存在的文件)
         /// </summary>
-        public bool BypassChina = false;
+        public string? RelativePath => FullName == null ? null : ModeHelper.GetRelativePath(FullName);
+
+        public IEnumerable<string> GetRules()
+        {
+            var result = new List<string>();
+            foreach (var s in Content)
+            {
+                if (string.IsNullOrWhiteSpace(s))
+                    continue;
+
+                if (s.StartsWith("//"))
+                    continue;
+
+                const string include = "#include";
+                if (s.StartsWith(include))
+                {
+                    var relativePath = new StringBuilder(s[include.Length..].Trim());
+                    relativePath.Replace("<", "").Replace(">", "");
+                    relativePath.Replace(".h", ".txt");
+
+                    var mode = Global.Modes.FirstOrDefault(m => m.RelativePath?.Equals(relativePath.ToString()) ?? false) ??
+                               throw new MessageException($"{relativePath} file included in {Remark} not found");
+
+                    if (mode == this)
+                        throw new MessageException("Can't self-reference");
+
+                    if (mode.Type != Type)
+                        throw new MessageException($"{mode.Remark}'s mode is not as same as {Remark}'s mode");
+
+                    if (mode.Content.Any(rule => rule.StartsWith(include)))
+                        throw new Exception("Cannot reference mode that reference other mode");
+
+                    result.AddRange(mode.GetRules());
+                }
+                else
+                {
+                    result.Add(s);
+                }
+            }
+
+            return result;
+        }
+
+        private static (string, ModeType) ReadHead(string fileName)
+        {
+            var text = File.ReadLines(fileName).First();
+            if (text.First() != '#')
+                throw new FormatException($"{fileName} head not found at Line 0");
+
+            var split = text[1..].SplitTrimEntries(',');
+
+            var typeNumber = int.TryParse(split.ElementAtOrDefault(1), out var type) ? type : 0;
+            if (!Enum.GetValues(typeof(ModeType)).Cast<int>().Contains(typeNumber))
+                throw new NotSupportedException($"Not support mode \"{typeNumber}\".");
+
+            return (split[0], (ModeType)typeNumber);
+        }
+
+        private List<string> ReadContent()
+        {
+            if (FullName == null || !File.Exists(FullName))
+                return new List<string>();
+
+            return File.ReadLines(FullName).Skip(1).ToList();
+        }
+
+        public void ResetContent()
+        {
+            _content = null;
+        }
+
+        public void WriteFile()
+        {
+            var dir = Path.GetDirectoryName(FullName)!;
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            var content = $"# {Remark}, {(int)Type}{Constants.EOF}{string.Join(Constants.EOF, Content)}";
+            // 写入到模式文件里
+            File.WriteAllText(FullName!, content);
+        }
 
         /// <summary>
-        ///		规则
-        /// </summary>
-        public List<string> Rule = new List<string>();
-
-        /// <summary>
-        ///		获取备注
+        ///     获取备注
         /// </summary>
         /// <returns>备注</returns>
         public override string ToString()
         {
-            return string.Format("[{0}] {1}", Type + 1, Remark);
+            return $"[{(int)Type + 1}] {i18N.Translate(Remark)}";
         }
+    }
 
-        /// <summary>
-        ///		获取模式文件字符串
-        /// </summary>
-        /// <returns>模式文件字符串</returns>
-        public string ToFileString()
+    public static class ModeExtension
+    {
+        /// 是否会转发 UDP
+        public static bool TestNatRequired(this Mode mode)
         {
-            string FileString;
-
-            // 进程模式
-            if (Type == 0)
-            {
-                FileString = $"# {Remark}\r\n";
-            }
-
-            // TUN/TAP 规则内 IP CIDR，无 Bypass China 设置
-            else if (Type == 1)
-            {
-                FileString = $"# {Remark}, {Type}, 0\r\n";
-            }
-
-            // TUN/TAP 全局，绕过规则内 IP CIDR
-            // HTTP 代理（自动设置到系统代理）
-            // Socks5 代理（不自动设置到系统代理）
-            // Socks5 + HTTP 代理（不自动设置到系统代理）
-            else
-            {
-                FileString = $"# {Remark}, {Type}, {(BypassChina ? 1 : 0)}\r\n";
-            }
-
-            foreach (var item in Rule)
-            {
-                FileString = $"{FileString}{item}\r\n";
-            }
-
-            // 去除最后两个多余回车符和换行符
-            FileString = FileString.Substring(0, FileString.Length - 2);
-
-            return FileString;
-        }
-
-        /// <summary>
-        ///		写入模式文件
-        /// </summary>
-        public void ToFile(string Dir)
-        {
-            if (!System.IO.Directory.Exists(Dir))
-            {
-                System.IO.Directory.CreateDirectory(Dir);
-            }
-
-            var NewPath = System.IO.Path.Combine(Dir, FileName);
-            if (System.IO.File.Exists(NewPath + ".txt"))
-            {
-                // 重命名该模式文件名
-                NewPath += "_";
-
-                while (System.IO.File.Exists(NewPath + ".txt"))
-                {
-                    // 循环重命名该模式文件名，直至不重名
-                    NewPath += "_";
-                }
-            }
-
-            FileName = System.IO.Path.GetFileName(NewPath);
-
-            // 加上文件名后缀
-            NewPath += ".txt";
-
-            // 写入到模式文件里
-            System.IO.File.WriteAllText(NewPath, ToFileString());
-        }
-
-        /// <summary>
-        ///		删除模式文件
-        /// </summary>
-        public void DeleteFile(string Dir)
-        {
-            if (System.IO.Directory.Exists(Dir))
-            {
-                var NewPath = System.IO.Path.Combine(Dir, FileName);
-                if (System.IO.File.Exists(NewPath + ".txt"))
-                {
-                    System.IO.File.Delete(NewPath + ".txt");
-                }
-            }
+            return mode.Type is ModeType.Process or ModeType.BypassRuleIPs;
         }
     }
 }

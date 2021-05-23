@@ -1,57 +1,27 @@
-name: Netch CI
-on: [push]
+name: Netch Build CI
+on: [push, pull_request]
+
 jobs:
   build:
     name: Build
     runs-on: windows-latest
     steps:
-    - name: NuGet
-      uses: nuget/setup-nuget@v1
+      - name: MSBuild
+        uses: microsoft/setup-msbuild@v1.0.2
 
-    - name: MSBuild
-      uses: microsoft/setup-msbuild@v1.0.0
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Build
+        shell: pwsh
+        run: |
+          .\build.ps1 -Configuration Release -OutputPath release
 
-    - name: Update submodules
-      uses: snickerbockers/submodules-init@v4
-
-    - name: Restore NuGet Package
-      run: nuget restore Netch.sln
-
-    - name: Build .NET 4.8
-      shell: pwsh
-      run: |
-        .\BUILD.ps1
-        New-Item -ItemType Directory -Path C:\builtfiles -Force > $null
-        Compress-Archive -Path Netch\bin\x64\Release\win-x64\* -DestinationPath C:\builtfiles\Netch.zip
-        echo "::set-env name=Netch_SHA256::$(.\GetSHA256.ps1 C:\builtfiles\Netch.zip)"
-
-    - name: Upload
-      uses: actions/upload-artifact@v1
-      with:
-        name: Netch
-        path: Netch\bin\x64\Release\win-x64
-  
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        name: ${{ env.GITHUB_TAG_NAME }}
-        prerelease: true
-        draft: false
-        files: |
-          C:\builtfiles\Netch.zip
-        body: |
-          [![](https://img.shields.io/badge/Telegram-Channel-blue)](https://t.me/Netch) [![](https://img.shields.io/badge/Telegram-Group-green)](https://t.me/Netch_Discuss_Group)
-
-          ## 更新日志
-          * 这是 GitHub Action 自动化部署，更新日志应该很快会手动更新
-
-          ## 校验和
-          | 文件名 | SHA256 |
-          | :- | :- |
-          | Netch.zip | ${{ env.Netch_SHA256 }} |
+      - name: Upload
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: Netch
+          path: release

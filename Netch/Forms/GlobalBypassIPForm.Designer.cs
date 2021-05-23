@@ -119,13 +119,11 @@
             this.Controls.Add(this.IPGroupBox);
             this.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.MaximizeBox = false;
             this.Name = "GlobalBypassIPForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Global Bypass IPs";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.GlobalBypassIPForm_FormClosing);
             this.Load += new System.EventHandler(this.GlobalBypassIPForm_Load);
             this.IPGroupBox.ResumeLayout(false);
             this.IPGroupBox.PerformLayout();

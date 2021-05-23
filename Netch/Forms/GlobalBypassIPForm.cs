@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Netch.Properties;
+using Netch.Utils;
+using System;
+using System.Linq;
 using System.Net;
 using System.Windows.Forms;
 
@@ -9,27 +12,19 @@ namespace Netch.Forms
         public GlobalBypassIPForm()
         {
             InitializeComponent();
+            Icon = Resources.icon;
         }
 
         private void GlobalBypassIPForm_Load(object sender, EventArgs e)
         {
-            Text = Utils.i18N.Translate(Text);
-            AddButton.Text = Utils.i18N.Translate(AddButton.Text);
-            DeleteButton.Text = Utils.i18N.Translate(DeleteButton.Text);
-            ControlButton.Text = Utils.i18N.Translate(ControlButton.Text);
+            i18N.TranslateForm(this);
 
-            IPListBox.Items.AddRange(Global.Settings.BypassIPs.ToArray());
+            IPListBox.Items.AddRange(Global.Settings.TUNTAP.BypassIPs.Cast<object>().ToArray());
 
             for (var i = 32; i >= 1; i--)
-            {
                 PrefixComboBox.Items.Add(i);
-            }
-            PrefixComboBox.SelectedIndex = 0;
-        }
 
-        private void GlobalBypassIPForm_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            Global.SettingForm.Show();
+            PrefixComboBox.SelectedIndex = 0;
         }
 
         private void AddButton_Click(object sender, EventArgs e)
@@ -37,42 +32,32 @@ namespace Netch.Forms
             if (!string.IsNullOrEmpty(IPTextBox.Text))
             {
                 if (IPAddress.TryParse(IPTextBox.Text, out var address))
-                {
-                    IPListBox.Items.Add(string.Format("{0}/{1}", address, PrefixComboBox.SelectedItem));
-                }
+                    IPListBox.Items.Add($"{address}/{PrefixComboBox.SelectedItem}");
                 else
-                {
-                    MessageBox.Show(Utils.i18N.Translate("Please enter a correct IP address"), Utils.i18N.Translate("Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                    MessageBoxX.Show(i18N.Translate("Please enter a correct IP address"));
             }
             else
             {
-                MessageBox.Show(Utils.i18N.Translate("Please enter an IP"), Utils.i18N.Translate("Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBoxX.Show(i18N.Translate("Please enter an IP"));
             }
         }
 
         private void DeleteButton_Click(object sender, EventArgs e)
         {
             if (IPListBox.SelectedIndex != -1)
-            {
                 IPListBox.Items.RemoveAt(IPListBox.SelectedIndex);
-            }
             else
-            {
-                MessageBox.Show(Utils.i18N.Translate("Please select an IP"), Utils.i18N.Translate("Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
+                MessageBoxX.Show(i18N.Translate("Please select an IP"));
         }
 
         private void ControlButton_Click(object sender, EventArgs e)
         {
-            Global.Settings.BypassIPs.Clear();
+            Global.Settings.TUNTAP.BypassIPs.Clear();
             foreach (var ip in IPListBox.Items)
-            {
-                Global.Settings.BypassIPs.Add(ip as string);
-            }
+                Global.Settings.TUNTAP.BypassIPs.Add((string)ip);
 
-            Utils.Configuration.Save();
-            MessageBox.Show(Utils.i18N.Translate("Saved"), Utils.i18N.Translate("Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Configuration.Save();
+            MessageBoxX.Show(i18N.Translate("Saved"));
             Close();
         }
     }
