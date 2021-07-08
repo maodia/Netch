@@ -1,13 +1,34 @@
-using Netch.Models;
 using System.Collections.Generic;
+using Netch.Models;
 
-namespace Netch.Servers.VMess
+namespace Netch.Servers
 {
     public class VMess : Server
     {
         private string _tlsSecureType = VMessGlobal.TLSSecure[0];
 
         public override string Type { get; } = "VMess";
+
+        public override string MaskedData()
+        {
+            var maskedData = $"{EncryptMethod} + {TransferProtocol} + {FakeType}";
+            switch (TransferProtocol)
+            {
+                case "tcp":
+                case "ws":
+                    maskedData += $" + {TLSSecureType}";
+                    break;
+                case "quic":
+                    maskedData += $" + {QUICSecure}";
+                    break;
+                case "grpc":
+                    break;
+                case "kcp":
+                    break;
+            }
+
+            return maskedData;
+        }
 
         /// <summary>
         ///     用户 ID
@@ -72,7 +93,9 @@ namespace Netch.Servers.VMess
         /// <summary>
         ///     Mux 多路复用
         /// </summary>
-        public bool? UseMux { get; set; } = false;
+        public bool? UseMux { get; set; }
+
+        public string? ServerName { get; set; } = string.Empty;
     }
 
     public class VMessGlobal
@@ -101,7 +124,8 @@ namespace Netch.Servers.VMess
             "kcp",
             "ws",
             "h2",
-            "quic"
+            "quic",
+            "grpc"
         };
 
         /// <summary>
@@ -115,7 +139,9 @@ namespace Netch.Servers.VMess
             "utp",
             "wechat-video",
             "dtls",
-            "wireguard"
+            "wireguard",
+            "gun",
+            "multi"
         };
 
         /// <summary>

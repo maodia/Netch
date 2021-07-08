@@ -1,11 +1,13 @@
-﻿using Microsoft.Diagnostics.Tracing.Parsers;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Session;
 using Netch.Controllers;
 using Netch.Models;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+using Serilog;
 
 namespace Netch.Utils
 {
@@ -56,9 +58,8 @@ namespace Netch.Utils
             {
                 case null:
                     break;
-                case Guard instanceController:
-                    if (instanceController.Instance != null)
-                        instances.Add(instanceController.Instance);
+                case Guard guard:
+                    instances.Add(guard.Instance);
 
                     break;
             }
@@ -68,17 +69,17 @@ namespace Netch.Utils
                 {
                     case null:
                         break;
-                    case NFController _:
+                    case NFController:
                         instances.Add(Process.GetCurrentProcess());
                         break;
-                    case Guard instanceController:
-                        instances.Add(instanceController.Instance!);
+                    case Guard guard:
+                        instances.Add(guard.Instance);
                         break;
                 }
 
-            var processList = instances.Select(instance => instance.Id).ToList();
+            var processList = instances.Select(instance => instance.Id).ToHashSet();
 
-            Global.Logger.Info("流量统计进程:" + string.Join(",", instances.Select(instance => $"({instance.Id})" + instance.ProcessName).ToArray()));
+            Log.Information("流量统计进程: {Processes}", string.Join(',', instances.Select(v => $"({v.Id}){v.ProcessName}")));
 
             received = 0;
 
@@ -117,7 +118,7 @@ namespace Netch.Utils
 
             while (Global.MainForm.State != State.Stopped)
             {
-                Task.Delay(1000).Wait();
+                Thread.Sleep(1000);
                 lock (counterLock)
                     Global.MainForm.OnBandwidthUpdated(received);
             }

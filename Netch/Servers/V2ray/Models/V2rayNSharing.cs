@@ -1,4 +1,4 @@
-﻿namespace Netch.Servers.V2ray.Models
+﻿namespace Netch.Servers.Models
 {
     /// <summary>
     ///     使用 v2rayN 定义的 VMess 链接格式
@@ -31,7 +31,7 @@
         public string net { get; set; } = string.Empty;
 
         /// <summary>
-        ///     伪装路径
+        ///     伪装路径/服务名称
         /// </summary>
         public string? path { get; set; } = string.Empty;
 

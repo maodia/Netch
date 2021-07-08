@@ -13,13 +13,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MaxMind.GeoIP2;
 using Microsoft.Win32.TaskScheduler;
+using Serilog;
 using Task = System.Threading.Tasks.Task;
 
 namespace Netch.Utils
 {
     public static class Utils
     {
-        public static bool Open(string path)
+        public static void Open(string path)
         {
             try
             {
@@ -29,12 +30,10 @@ namespace Netch.Utils
                     Arguments = path,
                     UseShellExecute = true
                 });
-
-                return true;
             }
-            catch
+            catch (Exception e)
             {
-                return false;
+                Log.Warning(e, "打开 {Uri} 失败", path);
             }
         }
 
@@ -201,6 +200,9 @@ namespace Netch.Utils
 
                 td.Settings.ExecutionTimeLimit = TimeSpan.Zero;
                 td.Settings.DisallowStartIfOnBatteries = false;
+                td.Settings.StopIfGoingOnBatteries = false;
+                td.Settings.IdleSettings.StopOnIdleEnd = false;
+                td.Settings.IdleSettings.RestartOnIdle = false;
                 td.Settings.RunOnlyIfIdle = false;
                 td.Settings.Compatibility = TaskCompatibility.V2_1;
 
@@ -224,37 +226,6 @@ namespace Netch.Utils
 
                     break;
             }
-        }
-
-        public static async Task ProcessRunHiddenAsync(string fileName, string arguments = "", bool print = true)
-        {
-            var p = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    Verb = "runas",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            Global.Logger.Debug($"{fileName} {arguments}");
-
-            p.Start();
-            var output = await p.StandardOutput.ReadToEndAsync();
-            var error = await p.StandardError.ReadToEndAsync();
-            if (print)
-            {
-                Console.Write(output);
-                Console.Write(error);
-            }
-
-            await p.WaitForExitAsync();
         }
 
         public static int SubnetToCidr(string value)

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using Serilog;
 
 namespace Netch.Interops
 {
@@ -9,6 +10,7 @@ namespace Netch.Interops
 
         public static bool Dial(NameList name, string value)
         {
+            Log.Debug($"[aiodns] Dial {name}: {value}");
             return aiodns_dial(name, Encoding.UTF8.GetBytes(value));
         }
 

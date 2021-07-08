@@ -40,6 +40,7 @@
             this.UpdateServersFromSubscribeLinksToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.OptionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.OpenDirectoryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ShowHideConsoleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CleanDNSCacheToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.UninstallServiceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeNetchFirewallRulesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -190,6 +191,7 @@
             // 
             this.OptionsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.OpenDirectoryToolStripMenuItem,
+            this.ShowHideConsoleToolStripMenuItem,
             this.CleanDNSCacheToolStripMenuItem,
             this.UninstallServiceToolStripMenuItem,
             this.removeNetchFirewallRulesToolStripMenuItem});
@@ -204,6 +206,13 @@
             this.OpenDirectoryToolStripMenuItem.Size = new System.Drawing.Size(243, 22);
             this.OpenDirectoryToolStripMenuItem.Text = "Open Directory";
             this.OpenDirectoryToolStripMenuItem.Click += new System.EventHandler(this.OpenDirectoryToolStripMenuItem_Click);
+            // 
+            // ShowHideConsoleToolStripMenuItem
+            // 
+            this.ShowHideConsoleToolStripMenuItem.Name = "ShowHideConsoleToolStripMenuItem";
+            this.ShowHideConsoleToolStripMenuItem.Size = new System.Drawing.Size(243, 22);
+            this.ShowHideConsoleToolStripMenuItem.Text = "Show/Hide Console";
+            this.ShowHideConsoleToolStripMenuItem.Click += new System.EventHandler(this.ShowHideConsoleToolStripMenuItem_Click);
             // 
             // CleanDNSCacheToolStripMenuItem
             // 
@@ -600,19 +609,19 @@
             this.ExitToolStripButton});
             this.NotifyMenu.Name = "NotifyMenu";
             this.NotifyMenu.ShowItemToolTips = false;
-            this.NotifyMenu.Size = new System.Drawing.Size(108, 48);
+            this.NotifyMenu.Size = new System.Drawing.Size(181, 70);
             // 
             // ShowMainFormToolStripButton
             // 
             this.ShowMainFormToolStripButton.Name = "ShowMainFormToolStripButton";
-            this.ShowMainFormToolStripButton.Size = new System.Drawing.Size(107, 22);
+            this.ShowMainFormToolStripButton.Size = new System.Drawing.Size(180, 22);
             this.ShowMainFormToolStripButton.Text = "Show";
             this.ShowMainFormToolStripButton.Click += new System.EventHandler(this.ShowMainFormToolStripButton_Click);
             // 
             // ExitToolStripButton
             // 
             this.ExitToolStripButton.Name = "ExitToolStripButton";
-            this.ExitToolStripButton.Size = new System.Drawing.Size(107, 22);
+            this.ExitToolStripButton.Size = new System.Drawing.Size(180, 22);
             this.ExitToolStripButton.Text = "Exit";
             this.ExitToolStripButton.Click += new System.EventHandler(this.ExitToolStripButton_Click);
             // 
@@ -743,7 +752,7 @@
         private System.Windows.Forms.ToolStripMenuItem ImportServersFromClipboardToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem ManageSubscribeLinksToolStripMenuItem;
         private System.Windows.Forms.MenuStrip MenuStrip;
-        private System.Windows.Forms.ComboBox ModeComboBox;
+        public System.Windows.Forms.ComboBox ModeComboBox;
         private System.Windows.Forms.Label ModeLabel;
         private System.Windows.Forms.ToolStripMenuItem ModeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem HelpToolStripMenuItem;
@@ -782,5 +791,6 @@
 
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.ContainerControl ButtomControlContainerControl;
+        private System.Windows.Forms.ToolStripMenuItem ShowHideConsoleToolStripMenuItem;
     }
 }

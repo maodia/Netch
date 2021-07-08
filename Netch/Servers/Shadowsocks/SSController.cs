@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net;
 using Netch.Controllers;
 using Netch.Interfaces;
 using Netch.Models;
@@ -7,19 +8,21 @@ namespace Netch.Servers.Shadowsocks
 {
     public class SSController : Guard, IServerController
     {
-        public override string MainFile { get; protected set; } = "Shadowsocks.exe";
+        public SSController() : base("Shadowsocks.exe")
+        {
+        }
 
-        protected override IEnumerable<string> StartedKeywords { get; set; } = new[] { "listening at" };
+        protected override IEnumerable<string> StartedKeywords => new[] { "listening at" };
 
-        protected override IEnumerable<string> StoppedKeywords { get; set; } = new[] { "Invalid config path", "usage", "plugin service exit unexpectedly" };
+        protected override IEnumerable<string> FailedKeywords => new[] { "Invalid config path", "usage", "plugin service exit unexpectedly" };
 
-        public override string Name { get; } = "Shadowsocks";
+        public override string Name => "Shadowsocks";
 
         public ushort? Socks5LocalPort { get; set; }
 
         public string? LocalAddress { get; set; }
 
-        public void Start(in Server s, in Mode mode)
+        public Socks5 Start(in Server s)
         {
             var server = (Shadowsocks)s;
 
@@ -36,7 +39,8 @@ namespace Netch.Servers.Shadowsocks
                 plugin_opts = server.PluginOption
             };
 
-            StartInstanceAuto(command.ToString());
+            StartGuard(command.ToString());
+            return new Socks5Bridge(IPAddress.Loopback.ToString(), this.Socks5LocalPort(), server.Hostname);
         }
 
         [Verb]
@@ -56,24 +60,14 @@ namespace Netch.Servers.Shadowsocks
 
             public bool u { get; set; }
 
-            [Full]
-            [Optional]
-            public string? plugin { get; set; }
+            [Full] [Optional] public string? plugin { get; set; }
 
             [Full]
             [Optional]
             [RealName("plugin-opts")]
             public string? plugin_opts { get; set; }
 
-            [Full]
-            [Quote]
-            [Optional]
-            public string? acl { get; set; }
-        }
-
-        public override void Stop()
-        {
-            StopInstance();
+            [Full] [Quote] [Optional] public string? acl { get; set; }
         }
     }
 }

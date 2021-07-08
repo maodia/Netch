@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <UseWindowsForms>true</UseWindowsForms>
@@ -38,17 +38,23 @@
     <ItemGroup>
         <PackageReference Include="HMBSbige.SingleInstance" Version="5.0.0" />
         <PackageReference Include="MaxMind.GeoIP2" Version="4.0.1" />
-        <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="2.0.68" GeneratePathProperty="true" />
+        <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="2.0.69" GeneratePathProperty="true" />
         <PackageReference Include="Nullable.Extended.Analyzer" Version="1.2.4089">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Serilog" Version="2.10.0" />
+        <PackageReference Include="Serilog.Extensions.Hosting" Version="4.1.2" />
+        <PackageReference Include="Serilog.Sinks.Async" Version="1.4.0" />
+        <PackageReference Include="Serilog.Sinks.Debug" Version="2.0.0" Condition="'$(Configuration)'=='Debug'" />
+        <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
         <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
         <PackageReference Include="System.Management" Version="5.0.0" />
+        <PackageReference Include="System.Reactive" Version="5.0.0" />
         <PackageReference Include="TaskScheduler" Version="2.9.1" />
-        <PackageReference Include="Vanara.PInvoke.IpHlpApi" Version="3.3.9" />
+        <PackageReference Include="Vanara.PInvoke.IpHlpApi" Version="3.3.10" />
         <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.4" />
-        <PackageReference Include="Vanara.PInvoke.User32" Version="3.3.9" />
+        <PackageReference Include="Vanara.PInvoke.User32" Version="3.3.10" />
         <PackageReference Include="WindowsFirewallHelper" Version="2.0.4.70-beta2" />
         <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.0" />
         <PackageReference Include="System.Text.Encoding.CodePages" Version="5.0.0" />
@@ -65,7 +71,7 @@
             <AutoGen>True</AutoGen>
             <DependentUpon>Settings.settings</DependentUpon>
         </Compile>
-        <Compile Update="Forms\Mode\Route.cs" />
+        <Compile Update="Forms\Mode\RouteForm.cs" />
     </ItemGroup>
 
     <ItemGroup>

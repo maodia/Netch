@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Netch.Interfaces;
 using Netch.Models;
-using Netch.Servers.Trojan.Form;
+using Netch.Servers.Form;
 
-namespace Netch.Servers.Trojan
+namespace Netch.Servers
 {
     public class TrojanUtil : IServerUtil
     {
@@ -75,7 +75,7 @@ namespace Netch.Servers.Trojan
             if (!match.Success)
                 throw new FormatException();
 
-            data.Password = match.Groups["psk"].Value;
+            data.Password = HttpUtility.UrlDecode(match.Groups["psk"].Value);
             data.Hostname = match.Groups["server"].Value;
             data.Port = ushort.Parse(match.Groups["port"].Value);
 

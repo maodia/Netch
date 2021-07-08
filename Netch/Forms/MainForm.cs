@@ -1,9 +1,3 @@
-using Microsoft.Win32;
-using Netch.Controllers;
-using Netch.Forms.Mode;
-using Netch.Models;
-using Netch.Properties;
-using Netch.Utils;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -14,8 +8,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Win32;
+using Netch.Controllers;
 using Netch.Enums;
+using Netch.Forms.ModeForms;
 using Netch.Interfaces;
+using Netch.Models;
+using Netch.Properties;
+using Netch.Services;
+using Netch.Utils;
+using Serilog;
+using Vanara.PInvoke;
 
 namespace Netch.Forms
 {
@@ -69,10 +72,13 @@ namespace Netch.Forms
             RecordSize();
 
             LoadServers();
+            SelectLastServer();
             ServerHelper.DelayTestHelper.UpdateInterval();
 
+            ModeHelper.InitWatcher();
             ModeHelper.Load();
             LoadModes();
+            SelectLastMode();
 
             // 加载翻译
             TranslateControls();
@@ -100,6 +106,8 @@ namespace Netch.Forms
                 if (Global.Settings.StartWhenOpened)
                     ControlButton_Click(null, null);
             }));
+
+            Netch.SingleInstance.ListenForArgumentsFromSuccessiveInstances();
         }
 
         private void RecordSize()
@@ -202,7 +210,7 @@ namespace Netch.Forms
 
         #region Server
 
-        private void ImportServersFromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void ImportServersFromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var texts = Clipboard.GetText();
             if (!string.IsNullOrWhiteSpace(texts))
@@ -212,11 +220,11 @@ namespace Netch.Forms
                 NotifyTip(i18N.TranslateFormat("Import {0} server(s) form Clipboard", servers.Count));
 
                 LoadServers();
-                Configuration.Save();
+                await Configuration.SaveAsync();
             }
         }
 
-        private void AddServerToolStripMenuItem_Click([NotNull] object? sender, EventArgs? e)
+        private async void AddServerToolStripMenuItem_Click([NotNull] object? sender, EventArgs? e)
         {
             if (sender == null)
                 throw new ArgumentNullException(nameof(sender));
@@ -227,7 +235,7 @@ namespace Netch.Forms
             util.Create();
 
             LoadServers();
-            Configuration.Save();
+            await Configuration.SaveAsync();
             Show();
         }
 
@@ -238,14 +246,14 @@ namespace Netch.Forms
         private void CreateProcessModeToolStripButton_Click(object sender, EventArgs e)
         {
             Hide();
-            new Process().ShowDialog();
+            new ProcessForm().ShowDialog();
             Show();
         }
 
         private void createRouteTableModeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Hide();
-            new Route().ShowDialog();
+            new RouteForm().ShowDialog();
             Show();
         }
 
@@ -287,13 +295,13 @@ namespace Netch.Forms
                 await Subscription.UpdateServersAsync();
 
                 LoadServers();
-                Configuration.Save();
+                await Configuration.SaveAsync();
                 StatusText(i18N.Translate("Subscription updated"));
             }
             catch (Exception e)
             {
                 NotifyTip(i18N.Translate("update servers failed") + "\n" + e.Message, info: false);
-                Global.Logger.Error("更新服务器 失败！" + e);
+                Log.Error("更新服务器 失败！" + e);
             }
             finally
             {
@@ -380,6 +388,13 @@ namespace Netch.Forms
             Firewall.RemoveNetchFwRules();
         }
 
+        private void ShowHideConsoleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var windowStyles = (User32.WindowStyles)User32.GetWindowLong(Netch.ConsoleHwnd, User32.WindowLongFlags.GWL_STYLE);
+            var visible = windowStyles.HasFlag(User32.WindowStyles.WS_VISIBLE);
+            User32.ShowWindow(Netch.ConsoleHwnd, visible ? ShowWindowCommand.SW_HIDE : ShowWindowCommand.SW_SHOWNOACTIVATE);
+        }
+
         #endregion
 
         /// <summary>
@@ -413,17 +428,14 @@ namespace Netch.Forms
 
             try
             {
-                await Updater.Updater.DownloadAndUpdate(Path.Combine(Global.NetchDir, "data"),
+                await Updater.DownloadAndUpdate(Path.Combine(Global.NetchDir, "data"),
                     Global.NetchDir,
                     (_, args) => BeginInvoke(new Action(() => NewVersionLabel.Text = $"{args.ProgressPercentage}%")));
             }
             catch (Exception exception)
             {
                 if (exception is not MessageException)
-                {
-                    Global.Logger.Error($"更新失败: {exception}");
-                    Global.Logger.ShowLog();
-                }
+                    Log.Error(exception, "更新未处理异常");
 
                 NotifyTip(exception.Message, info: false);
             }
@@ -458,7 +470,7 @@ namespace Netch.Forms
                 return;
             }
 
-            Configuration.Save();
+            await Configuration.SaveAsync();
 
             // 服务器、模式 需选择
             if (ServerComboBox.SelectedItem is not Server server)
@@ -467,7 +479,7 @@ namespace Netch.Forms
                 return;
             }
 
-            if (ModeComboBox.SelectedItem is not Models.Mode mode)
+            if (ModeComboBox.SelectedItem is not Mode mode)
             {
                 MessageBoxX.Show(i18N.Translate("Please select a mode first"));
                 return;
@@ -489,31 +501,29 @@ namespace Netch.Forms
 
             State = State.Started;
 
-            _ = Task.Run(Bandwidth.NetTraffic);
-            _ = Task.Run(NatTest);
+            Task.Run(Bandwidth.NetTraffic).Forget();
+            Task.Run(NatTest).Forget();
 
             if (Global.Settings.MinimizeWhenStarted)
                 Minimize();
 
             // 自动检测延迟
-            _ = Task.Run(() =>
-            {
-                while (State == State.Started)
+            Task.Run(() =>
                 {
-                    bool StartedPingEnabled() => Global.Settings.StartedPingInterval >= 0;
+                    while (State == State.Started)
+                        if (Global.Settings.StartedPingInterval >= 0)
+                        {
+                            server.Test();
+                            ServerComboBox.Refresh();
 
-                    if (StartedPingEnabled())
-                    {
-                        server.Test();
-                        ServerComboBox.Refresh();
-                    }
-
-                    if (StartedPingEnabled())
-                        Thread.Sleep(Global.Settings.StartedPingInterval * 1000);
-                    else
-                        Thread.Sleep(5000);
-                }
-            });
+                            Thread.Sleep(Global.Settings.StartedPingInterval * 1000);
+                        }
+                        else
+                        {
+                            Thread.Sleep(5000);
+                        }
+                })
+                .Forget();
         }
 
         #endregion
@@ -572,7 +582,7 @@ namespace Netch.Forms
             Global.Settings.ServerComboBoxSelectedIndex = ServerComboBox.SelectedIndex;
         }
 
-        private void EditServerPictureBox_Click(object sender, EventArgs e)
+        private async void EditServerPictureBox_Click(object sender, EventArgs e)
         {
             // 当前ServerComboBox中至少有一项
             if (!(ServerComboBox.SelectedItem is Server server))
@@ -587,7 +597,7 @@ namespace Netch.Forms
             Hide();
             ServerHelper.GetUtilByTypeName(server.Type).Edit(server);
             LoadServers();
-            Configuration.Save();
+            await Configuration.SaveAsync();
             Show();
         }
 
@@ -611,7 +621,7 @@ namespace Netch.Forms
             else
             {
                 ServerHelper.DelayTestHelper.TestDelayFinished += OnTestDelayFinished;
-                _ = Task.Run(ServerHelper.DelayTestHelper.TestAllDelay);
+                Task.Run(ServerHelper.DelayTestHelper.TestAllDelay).Forget();
 
                 void OnTestDelayFinished(object? o1, EventArgs? e1)
                 {
@@ -669,6 +679,12 @@ namespace Netch.Forms
 
         public void LoadModes()
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(LoadModes));
+                return;
+            }
+
             ModeComboBox.Items.Clear();
             ModeComboBox.Items.AddRange(Global.Modes.Cast<object>().ToArray());
             ModeComboBox.Tag = null;
@@ -691,7 +707,7 @@ namespace Netch.Forms
         {
             try
             {
-                Global.Settings.ModeComboBoxSelectedIndex = Global.Modes.IndexOf((Models.Mode)ModeComboBox.SelectedItem);
+                Global.Settings.ModeComboBoxSelectedIndex = Global.Modes.IndexOf((Mode)ModeComboBox.SelectedItem);
             }
             catch
             {
@@ -708,7 +724,7 @@ namespace Netch.Forms
                 return;
             }
 
-            var mode = (Models.Mode)ModeComboBox.SelectedItem;
+            var mode = (Mode)ModeComboBox.SelectedItem;
             if (ModifierKeys == Keys.Control)
             {
                 Utils.Utils.Open(ModeHelper.GetFullPath(mode.RelativePath!));
@@ -719,13 +735,13 @@ namespace Netch.Forms
             {
                 case ModeType.Process:
                     Hide();
-                    new Process(mode).ShowDialog();
+                    new ProcessForm(mode).ShowDialog();
                     Show();
                     break;
                 case ModeType.ProxyRuleIPs:
                 case ModeType.BypassRuleIPs:
                     Hide();
-                    new Route(mode).ShowDialog();
+                    new RouteForm(mode).ShowDialog();
                     Show();
                     break;
                 default:
@@ -743,7 +759,7 @@ namespace Netch.Forms
                 return;
             }
 
-            ModeHelper.Delete((Models.Mode)ModeComboBox.SelectedItem);
+            ModeHelper.Delete((Mode)ModeComboBox.SelectedItem);
             SelectLastMode();
         }
 
@@ -821,7 +837,7 @@ namespace Netch.Forms
             ProfileNameText.Text = profile.ProfileName;
 
             var server = ServerComboBox.Items.Cast<Server>().FirstOrDefault(s => s.Remark.Equals(profile.ServerRemark));
-            var mode = ModeComboBox.Items.Cast<Models.Mode>().FirstOrDefault(m => m.Remark.Equals(profile.ModeRemark));
+            var mode = ModeComboBox.Items.Cast<Mode>().FirstOrDefault(m => m.Remark.Equals(profile.ModeRemark));
 
             if (server == null)
                 throw new Exception("Server not found.");
@@ -836,7 +852,7 @@ namespace Netch.Forms
         private Profile CreateProfileAtIndex(int index)
         {
             var server = (Server)ServerComboBox.SelectedItem;
-            var mode = (Models.Mode)ModeComboBox.SelectedItem;
+            var mode = (Mode)ModeComboBox.SelectedItem;
             var name = ProfileNameText.Text;
 
             Profile? profile;
@@ -1110,7 +1126,7 @@ namespace Netch.Forms
                 await NatTest();
         }
 
-        private readonly object _natTestLock = new();
+        private bool _natTestLock = true;
 
         /// <summary>
         ///     测试 NAT
@@ -1120,12 +1136,14 @@ namespace Netch.Forms
             if (!MainController.Mode!.TestNatRequired())
                 return;
 
-            if (!Monitor.TryEnter(_natTestLock))
+            if (!_natTestLock)
                 return;
+
+            _natTestLock = false;
 
             try
             {
-                NatTypeStatusText(i18N.Translate("Starting NatTester"));
+                NatTypeStatusText(i18N.Translate("Testing NAT"));
 
                 var (result, _, publicEnd) = await MainController.NTTController.Start();
 
@@ -1141,7 +1159,7 @@ namespace Netch.Forms
             }
             finally
             {
-                Monitor.Exit(_natTestLock);
+                _natTestLock = true;
             }
         }
 
@@ -1163,7 +1181,7 @@ namespace Netch.Forms
                     if (!IsWaiting())
                     {
                         _resumeFlag = true;
-                        Global.Logger.Info("操作系统即将挂起，自动停止");
+                        Log.Information("操作系统即将挂起，自动停止");
                         ControlButton_Click(null, null);
                     }
 
@@ -1172,7 +1190,7 @@ namespace Netch.Forms
                     if (_resumeFlag)
                     {
                         _resumeFlag = false;
-                        Global.Logger.Info("操作系统即将从挂起状态继续，自动重启");
+                        Log.Information("操作系统即将从挂起状态继续，自动重启");
                         ControlButton_Click(null, null);
                     }
 
@@ -1212,11 +1230,9 @@ namespace Netch.Forms
             Hide();
 
             if (saveConfiguration)
-            {
-                Configuration.Save();
-            }
+                await Configuration.SaveAsync();
 
-            foreach (var file in new[] { "data\\last.json", "data\\privoxy.conf" })
+            foreach (var file in new[] { Constants.TempConfig, Constants.TempRouteFile })
                 if (File.Exists(file))
                     File.Delete(file);
 
@@ -1402,7 +1418,7 @@ namespace Netch.Forms
 
                     break;
                 }
-                case Models.Mode item:
+                case Mode item:
                 {
                     // 绘制 模式Box 底色
                     e.Graphics.FillRectangle(Brushes.Gray, _numberBoxX, e.Bounds.Y, _numberBoxWidth, e.Bounds.Height);

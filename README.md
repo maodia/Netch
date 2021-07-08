@@ -1,18 +1,18 @@
-<p align="center"><img src="https://github.com/NetchX/Netch/blob/master/Netch/Resources/Netch.png?raw=true" width="128" /></p>
+<p align="center"><img src="https://cdn.jsdelivr.net/gh/netchx/netch/Netch/Resources/Netch.png" width="128" /></p>
 
 <div align="center">
 
 # Netch
-A simple proxy client like SSTap
+A simple proxy client
 
 [![](https://img.shields.io/badge/telegram-group-green?style=flat-square)](https://t.me/netch_group)
 [![](https://img.shields.io/badge/telegram-channel-blue?style=flat-square)](https://t.me/netch_channel)
-[![](https://img.shields.io/github/downloads/NetchX/Netch/total.svg?style=flat-square)](https://github.com/NetchX/Netch/releases)
-[![](https://img.shields.io/github/v/release/NetchX/Netch?style=flat-square)](https://github.com/NetchX/Netch/releases)
+[![](https://img.shields.io/github/downloads/netchx/netch/total.svg?style=flat-square)](https://github.com/netchx/netch/releases)
+[![](https://img.shields.io/github/v/release/netchx/netch?style=flat-square)](https://github.com/netchx/netch/releases)
 </div>
 
 ## Features
-Some features may not be implemented in version 1.0
+Some features may not be implemented in version 1
 
 ### Modes
 - ProcessMode - Use Netfilter driver to intercept process traffic
@@ -27,15 +27,15 @@ Some features may not be implemented in version 1.0
 - [Shadowsocks](https://github.com/shadowsocks/shadowsocks-libev)
 - [ShadowsocksR](https://github.com/shadowsocksrr/shadowsocksr-libev)
 - [Trojan](https://trojan-gfw.github.io/trojan/)
-- [VMess](https://github.com/v2fly/v2ray-core)
 - [VLess](https://github.com/xtls/xray-core)
+- [VMess](https://github.com/v2fly/v2ray-core)
 
 ### Others
 - UDP NAT FullCone (May limited by your server)
-- .NET 5.0
+- .NET 5.0 x64
 
 ## Sponsor
-<a href="https://www.jetbrains.com/?from=Netch"><img src="jetbrains.svg" alt="JetBrains" width="200"/></a>
+<a href="https://www.jetbrains.com/?from=Netch"><img src="https://cdn.jsdelivr.net/gh/netchx/netch/jetbrains.svg" alt="JetBrains" width="200"/></a>
 
 - [NeroCloud](https://nerocloud.io)
 
@@ -45,13 +45,11 @@ Some features may not be implemented in version 1.0
 
 ## Credit
 - [WinTUN](https://www.wintun.net)
-- [NetFilter](https://netfiltersdk.com)
 - [aioCloud](https://github.com/aiocloud)
+- [NetFilter](https://netfiltersdk.com)
+- [TAP-Windows](https://github.com/OpenVPN/tap-windows6)
 - [Shadowsocks](https://github.com/shadowsocks/shadowsocks-libev)
 - [ShadowsocksR](https://github.com/shadowsocksrr/shadowsocksr-libev)
 - [Trojan](https://github.com/trojan-gfw/trojan)
 - [V2Ray](https://github.com/v2fly/v2ray-core)
 - [XRay](https://github.com/xtls/xray-core)
-
-## Stars
-[![](https://starchart.cc/NetchX/Netch.svg)](https://starchart.cc/NetchX/Netch)

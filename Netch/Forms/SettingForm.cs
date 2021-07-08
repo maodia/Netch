@@ -1,6 +1,3 @@
-using Netch.Models;
-using Netch.Properties;
-using Netch.Utils;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,6 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Windows.Forms;
+using Netch.Models;
+using Netch.Properties;
+using Netch.Utils;
+using Serilog;
 
 namespace Netch.Forms
 {
@@ -59,11 +60,11 @@ namespace Netch.Forms
             object[]? stuns;
             try
             {
-                stuns = File.ReadLines("bin\\stun.txt").Cast<object>().ToArray();
+                stuns = File.ReadLines(Constants.STUNServersFile).Cast<object>().ToArray();
             }
             catch (Exception e)
             {
-                Global.Logger.Warning($"Load stun.txt failed: {e.Message}");
+                Log.Warning(e, "Load stun.txt failed");
                 stuns = null;
             }
 
@@ -98,27 +99,24 @@ namespace Netch.Forms
 
             #region Process Mode
 
+            BindListComboBox(ProcessFilterProtocolComboBox,
+                s => Global.Settings.Redirector.FilterProtocol = (PortType)Enum.Parse(typeof(PortType), s.ToString(), false),
+                Enum.GetNames(typeof(PortType)),
+                Global.Settings.Redirector.FilterProtocol.ToString());
+
             BindCheckBox(DNSHijackCheckBox, b => Global.Settings.Redirector.DNSHijack = b, Global.Settings.Redirector.DNSHijack);
 
             BindTextBox(DNSHijackHostTextBox, s => true, s => Global.Settings.Redirector.DNSHijackHost = s, Global.Settings.Redirector.DNSHijackHost);
 
-            BindCheckBox(ICMPHijackCheckBox, b => Global.Settings.Redirector.ICMPHijack = b, Global.Settings.Redirector.ICMPHijack);
+            BindCheckBox(FilterICMPCheckBox, b => Global.Settings.Redirector.FilterICMP = b, Global.Settings.Redirector.FilterICMP);
 
-            BindTextBox(ICMPHijackHostTextBox,
-                s => IPAddress.TryParse(s, out _),
-                s => Global.Settings.Redirector.ICMPHost = s,
-                Global.Settings.Redirector.ICMPHost);
+            BindTextBox(ICMPDelayTextBox, s => int.TryParse(s, out _), s => { }, Global.Settings.Redirector.ICMPDelay);
 
             BindCheckBox(RedirectorSSCheckBox, s => Global.Settings.Redirector.RedirectorSS = s, Global.Settings.Redirector.RedirectorSS);
 
             BindCheckBox(ChildProcessHandleCheckBox,
                 s => Global.Settings.Redirector.ChildProcessHandle = s,
                 Global.Settings.Redirector.ChildProcessHandle);
-
-            BindListComboBox(ProcessProxyProtocolComboBox,
-                s => Global.Settings.Redirector.ProxyProtocol = (PortType)Enum.Parse(typeof(PortType), s.ToString(), false),
-                Enum.GetNames(typeof(PortType)),
-                Global.Settings.Redirector.ProxyProtocol.ToString());
 
             #endregion
 
@@ -211,11 +209,14 @@ namespace Netch.Forms
 
             #region AioDNS
 
-            BindTextBox(AioDNSRulePathTextBox, _ => true, s => Global.Settings.AioDNS.RulePath = s, Global.Settings.AioDNS.RulePath);
-
             BindTextBox(ChinaDNSTextBox, _ => true, s => Global.Settings.AioDNS.ChinaDNS = s, Global.Settings.AioDNS.ChinaDNS);
 
             BindTextBox(OtherDNSTextBox, _ => true, s => Global.Settings.AioDNS.OtherDNS = s, Global.Settings.AioDNS.OtherDNS);
+
+            BindTextBox(AioDNSListenPortTextBox,
+                s => ushort.TryParse(s, out _),
+                s => Global.Settings.AioDNS.ListenPort = ushort.Parse(s),
+                Global.Settings.AioDNS.ListenPort);
 
             #endregion
         }
@@ -240,7 +241,7 @@ namespace Netch.Forms
             Show();
         }
 
-        private void ControlButton_Click(object sender, EventArgs e)
+        private async void ControlButton_Click(object sender, EventArgs e)
         {
             Utils.Utils.ComponentIterator(this, component => Utils.Utils.ChangeControlForeColor(component, Color.Black));
 
@@ -264,7 +265,7 @@ namespace Netch.Forms
 
             Utils.Utils.RegisterNetchStartupItem();
 
-            Configuration.Save();
+            await Configuration.SaveAsync();
             MessageBoxX.Show(i18N.Translate("Saved"));
             Close();
         }
